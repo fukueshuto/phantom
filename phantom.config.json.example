@@ -1,0 +1,27 @@
+{
+  "squad": {
+    "agents": [
+      {
+        "name": "manager",
+        "prompt": "instructions/manager.md",
+        "worktree": false
+      },
+      {
+        "name": "dev-1",
+        "prompt": "instructions/developer.md",
+        "worktree": true
+      },
+      {
+        "name": "dev-auto",
+        "prompt": "instructions/auto-developer.md",
+        "worktree": true
+      }
+    ],
+    "layout": "auto"
+  },
+  "worktreesDirectory": ".phantom",
+  "postCreate": {
+    "copyFiles": [".env.example"],
+    "commands": ["npm install"]
+  }
+}
