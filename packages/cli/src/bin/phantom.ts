@@ -9,6 +9,7 @@ import { deleteHandler } from "../handlers/delete.ts";
 import { execHandler } from "../handlers/exec.ts";
 import { githubCheckoutHandler } from "../handlers/github-checkout.ts";
 import { githubHandler } from "../handlers/github.ts";
+import { initHandler } from "../handlers/init.ts";
 import { listHandler } from "../handlers/list.ts";
 import { mcpHandler } from "../handlers/mcp.ts";
 import { reviewHandler } from "../handlers/review.ts";
@@ -24,6 +25,7 @@ import { createHelp } from "../help/create.ts";
 import { deleteHelp } from "../help/delete.ts";
 import { execHelp } from "../help/exec.ts";
 import { githubCheckoutHelp, githubHelp } from "../help/github.ts";
+import { initHelp } from "../help/init.ts";
 import { listHelp } from "../help/list.ts";
 import { mcpHelp } from "../help/mcp.ts";
 import { reviewHelp } from "../help/review.ts";
@@ -41,6 +43,12 @@ interface Command {
 }
 
 const commands: Command[] = [
+  {
+    name: "init",
+    description: "Initialize phantom configuration interactively",
+    handler: initHandler,
+    help: initHelp,
+  },
   {
     name: "create",
     description: "Create a new Git worktree (phantom)",

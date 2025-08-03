@@ -17,6 +17,8 @@
     "@aku11i/phantom-github": "workspace:*",
     "@aku11i/phantom-mcp": "workspace:*",
     "@aku11i/phantom-process": "workspace:*",
-    "@aku11i/phantom-shared": "workspace:*"
+    "@aku11i/phantom-shared": "workspace:*",
+    "@types/inquirer": "^9.0.8",
+    "inquirer": "^12.9.0"
   }
 }
