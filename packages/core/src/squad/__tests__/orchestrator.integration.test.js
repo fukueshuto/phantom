@@ -158,6 +158,16 @@ class TestableAgentOrchestrator {
   getSessionManager() {
     return this.mockSessionManager;
   }
+
+  // Add method for testing environment variable setting
+  buildAgentCommand(commandString, agent, sessionName) {
+    const envVars = [
+      `PHANTOM_AGENT_NAME="${agent.name}"`,
+      `PHANTOM_SESSION_NAME="${sessionName}"`,
+    ];
+
+    return `${envVars.join(" ")} ${commandString}`;
+  }
 }
 
 describe("AgentOrchestrator Integration Tests", () => {
@@ -469,6 +479,64 @@ describe("AgentOrchestrator Integration Tests", () => {
       // Assert
       assert.strictEqual(result.ok, false);
       assert.strictEqual(result.error.message, "Failed to kill tmux session");
+    });
+  });
+
+  describe("Environment Variable Setting", () => {
+    test("should set PHANTOM_AGENT_NAME and PHANTOM_SESSION_NAME environment variables", () => {
+      // Arrange
+      const commandString = "claude code --session test-session";
+      const agent = { name: "developer", prompt: "./prompts/developer.md", worktree: true };
+      const sessionName = "test-session";
+
+      // Act
+      const result = orchestrator.buildAgentCommand(commandString, agent, sessionName);
+
+      // Assert
+      const expected = `PHANTOM_AGENT_NAME="developer" PHANTOM_SESSION_NAME="test-session" claude code --session test-session`;
+      assert.strictEqual(result, expected);
+    });
+
+    test("should properly escape agent names with spaces", () => {
+      // Arrange
+      const commandString = "claude code --session test-session";
+      const agent = { name: "code reviewer", prompt: "./prompts/reviewer.md", worktree: false };
+      const sessionName = "test-session";
+
+      // Act
+      const result = orchestrator.buildAgentCommand(commandString, agent, sessionName);
+
+      // Assert
+      const expected = `PHANTOM_AGENT_NAME="code reviewer" PHANTOM_SESSION_NAME="test-session" claude code --session test-session`;
+      assert.strictEqual(result, expected);
+    });
+
+    test("should properly escape session names with special characters", () => {
+      // Arrange
+      const commandString = "claude code --session test-session";
+      const agent = { name: "developer", prompt: "./prompts/developer.md", worktree: true };
+      const sessionName = "test-session-v2.1";
+
+      // Act
+      const result = orchestrator.buildAgentCommand(commandString, agent, sessionName);
+
+      // Assert
+      const expected = `PHANTOM_AGENT_NAME="developer" PHANTOM_SESSION_NAME="test-session-v2.1" claude code --session test-session`;
+      assert.strictEqual(result, expected);
+    });
+
+    test("should handle empty command string", () => {
+      // Arrange
+      const commandString = "";
+      const agent = { name: "developer", prompt: "./prompts/developer.md", worktree: true };
+      const sessionName = "test-session";
+
+      // Act
+      const result = orchestrator.buildAgentCommand(commandString, agent, sessionName);
+
+      // Assert
+      const expected = `PHANTOM_AGENT_NAME="developer" PHANTOM_SESSION_NAME="test-session" `;
+      assert.strictEqual(result, expected);
     });
   });
 

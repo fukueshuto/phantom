@@ -165,14 +165,12 @@ export class AgentOrchestrator {
       const panes = layoutResult.value;
 
       // Step 4: Start agents in their respective panes
-      // TODO: For now, skip agent startup to test tmux layout creation
-      console.log("Skipping agent startup for testing purposes");
-      const agents: AgentStatus[] = squadConfig.agents.map((agent, index) => ({
-        name: agent.name,
-        paneId: panes[index]?.id || "0",
-        status: "stopped" as const,
-        lastActivity: new Date(),
-      }));
+      const agentStartupResult = await this.startAgents(squadConfig.agents, panes, sessionName);
+      if (!agentStartupResult.ok) {
+        await this.cleanup(createdWorktrees);
+        return err(agentStartupResult.error);
+      }
+      const agents = agentStartupResult.value;
 
       // Update squad context
       this.squadContext.agents = agents;
