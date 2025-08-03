@@ -228,4 +228,261 @@ describe("loadConfig", () => {
       }
     });
   });
+
+  describe("squad configuration validation", () => {
+    test("should load valid squad config", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "developer",
+              prompt: "./prompts/developer.md",
+              worktree: true,
+            },
+            {
+              name: "reviewer",
+              prompt: "./prompts/reviewer.md",
+              worktree: false,
+            },
+          ],
+          layout: "grid",
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isOk(result), true);
+      if (isOk(result)) {
+        assert.deepStrictEqual(result.value, config);
+      }
+    });
+
+    test("should use default layout when not specified", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "developer",
+              prompt: "./prompts/developer.md",
+            },
+          ],
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isOk(result), true);
+      if (isOk(result)) {
+        // Default layout should be "auto"
+        assert.strictEqual(result.value.squad.layout, "auto");
+        // Default worktree should be false
+        assert.strictEqual(result.value.squad.agents[0].worktree, false);
+      }
+    });
+
+    test("should return error when squad.agents is empty", async () => {
+      const config = {
+        squad: {
+          agents: [],
+          layout: "grid",
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isErr(result), true);
+      if (isErr(result)) {
+        assert.ok(result.error instanceof ConfigValidationError);
+        assert.ok(result.error.message.includes("agents"));
+      }
+    });
+
+    test("should return error when agent name is empty", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "",
+              prompt: "./prompts/developer.md",
+            },
+          ],
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isErr(result), true);
+      if (isErr(result)) {
+        assert.ok(result.error instanceof ConfigValidationError);
+        assert.ok(result.error.message.includes("name"));
+      }
+    });
+
+    test("should return error when agent name is too long", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "a".repeat(21), // 21 characters, max is 20
+              prompt: "./prompts/developer.md",
+            },
+          ],
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isErr(result), true);
+      if (isErr(result)) {
+        assert.ok(result.error instanceof ConfigValidationError);
+        assert.ok(result.error.message.includes("name"));
+      }
+    });
+
+    test("should return error when prompt is missing", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "developer",
+            },
+          ],
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isErr(result), true);
+      if (isErr(result)) {
+        assert.ok(result.error instanceof ConfigValidationError);
+        assert.ok(result.error.message.includes("prompt"));
+      }
+    });
+
+    test("should return error when layout is invalid", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "developer",
+              prompt: "./prompts/developer.md",
+            },
+          ],
+          layout: "invalid-layout",
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isErr(result), true);
+      if (isErr(result)) {
+        assert.ok(result.error instanceof ConfigValidationError);
+        assert.ok(result.error.message.includes("layout"));
+      }
+    });
+
+    test("should accept all valid layout options", async () => {
+      const layouts = ["auto", "grid", "main-vertical"];
+
+      for (const layout of layouts) {
+        const config = {
+          squad: {
+            agents: [
+              {
+                name: "developer",
+                prompt: "./prompts/developer.md",
+              },
+            ],
+            layout,
+          },
+        };
+        await writeFile(
+          path.join(tempDir, "phantom.config.json"),
+          JSON.stringify(config),
+        );
+
+        const result = await loadConfig(tempDir);
+
+        assert.strictEqual(isOk(result), true, `Layout ${layout} should be valid`);
+        if (isOk(result)) {
+          assert.strictEqual(result.value.squad.layout, layout);
+        }
+      }
+    });
+
+    test("should handle complex squad configuration", async () => {
+      const config = {
+        squad: {
+          agents: [
+            {
+              name: "manager",
+              prompt: "./prompts/manager.md",
+              worktree: false,
+            },
+            {
+              name: "dev-frontend",
+              prompt: "./prompts/frontend.md",
+              worktree: true,
+            },
+            {
+              name: "dev-backend",
+              prompt: "./prompts/backend.md",
+              worktree: true,
+            },
+            {
+              name: "tester",
+              prompt: "./prompts/tester.md",
+              worktree: false,
+            },
+          ],
+          layout: "main-vertical",
+        },
+        postCreate: {
+          copyFiles: [".env", "package.json"],
+          commands: ["npm install"],
+        },
+      };
+      await writeFile(
+        path.join(tempDir, "phantom.config.json"),
+        JSON.stringify(config),
+      );
+
+      const result = await loadConfig(tempDir);
+
+      assert.strictEqual(isOk(result), true);
+      if (isOk(result)) {
+        assert.deepStrictEqual(result.value, config);
+        assert.strictEqual(result.value.squad.agents.length, 4);
+        assert.strictEqual(result.value.squad.layout, "main-vertical");
+      }
+    });
+  });
 });

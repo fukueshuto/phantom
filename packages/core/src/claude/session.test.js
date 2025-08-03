@@ -53,15 +53,23 @@ describe("ClaudeSessionManager", () => {
       strictEqual(result, "claude code --session sess-abc123");
     });
 
-    it("should build command string with agent", () => {
+    it("should build command string with agent (note: agent support removed)", () => {
       const result = sessionManager.buildCommandString(
         "sess-abc123",
         "test-agent",
       );
-      strictEqual(
-        result,
-        "claude code --session sess-abc123 --agent test-agent",
-      );
+      // Note: agent parameter is ignored in current implementation
+      strictEqual(result, "claude code --session sess-abc123");
+    });
+
+    it("should handle empty session ID", () => {
+      const result = sessionManager.buildCommandString("");
+      strictEqual(result, "claude code --session ");
+    });
+
+    it("should handle special characters in session ID", () => {
+      const result = sessionManager.buildCommandString("sess-abc123-def");
+      strictEqual(result, "claude code --session sess-abc123-def");
     });
   });
 
@@ -98,6 +106,54 @@ describe("ClaudeSessionManager", () => {
       const loadResult = await sessionManager.loadExistingSession(sessionName);
       strictEqual(isErr(loadResult), true);
       strictEqual(loadResult.error instanceof ClaudeSessionParseError, true);
+    });
+
+    it("should accept valid session ID format variations", async () => {
+      const testCases = [
+        "sess-abc123",
+        "sess-ABC123",
+        "sess-123456",
+        "sess-aBc123DeF",
+        "sess-1a2b3c4d",
+      ];
+
+      for (const sessionId of testCases) {
+        const sessionName = `test-${sessionId}`;
+        
+        // Save session
+        const saveResult = sessionManager.saveSession(sessionName, sessionId);
+        strictEqual(isOk(saveResult), true, `Failed to save ${sessionId}`);
+
+        // Load session
+        const loadResult = await sessionManager.loadExistingSession(sessionName);
+        strictEqual(isOk(loadResult), true, `Failed to load ${sessionId}`);
+        strictEqual(loadResult.value, sessionId);
+      }
+    });
+
+    it("should reject invalid session ID patterns", async () => {
+      const invalidIds = [
+        "session-abc123", // wrong prefix
+        "sess-", // missing ID
+        "sess-abc!", // invalid character
+        "sess-abc 123", // space
+        "sess-", // empty
+        "sess", // no dash
+        "SESS-abc123", // wrong case prefix
+      ];
+
+      for (const invalidId of invalidIds) {
+        const sessionName = `invalid-${Date.now()}-${Math.random()}`;
+        
+        // Manually write invalid session ID
+        const fs = await import("node:fs/promises");
+        const sessionFile = join(tempDir, `${sessionName}.session`);
+        await fs.writeFile(sessionFile, invalidId, "utf-8");
+
+        const loadResult = await sessionManager.loadExistingSession(sessionName);
+        strictEqual(isErr(loadResult), true, `Should reject ${invalidId}`);
+        strictEqual(loadResult.error instanceof ClaudeSessionParseError, true);
+      }
     });
   });
 
@@ -159,7 +215,7 @@ describe("ClaudeSessionManager", () => {
       strictEqual(result.value.isNew, false);
       strictEqual(
         result.value.commandString,
-        "claude code --session sess-existing123 --agent test-agent",
+        "claude code --session sess-existing123",
       );
     });
 
