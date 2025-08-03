@@ -30,6 +30,9 @@ Phantom is a powerful CLI tool that dramatically boosts your development product
 - 🐙 **GitHub Integration** - Create worktrees directly from GitHub PRs and issues
 - 🤖 **MCP Integration** - AI autonomously manages worktrees for parallel development
 - 🔍 **PR Review Interface** - Review worktree differences locally using [difit](https://github.com/yoshiko-pg/difit) (experimental)
+- 👥 **Multi-agent Squad System** - Coordinate multiple AI agents in separate worktrees for collaborative development
+- 🎨 **Claude Code Integration** - Seamless session management for AI-powered development
+- ⚙️ **Interactive Configuration** - Set up Phantom quickly with `phantom init`
 - ⚡ **Fast and lightweight** - Minimal external dependencies
 
 ## 🚀 Installation
@@ -206,12 +209,43 @@ phantom review --fzf
 phantom delete feature-awesome
 ```
 
+### New Features: Multi-agent Development
+
+#### Initialize your project configuration
+
+```bash
+phantom init
+```
+
+Start with an interactive setup to configure worktrees, development squads, and automation hooks.
+
+#### Start a Claude Code session
+
+```bash
+# Start with auto-generated session name
+phantom claude
+
+# Start with custom session name
+phantom claude -s my-feature
+
+# List existing sessions
+phantom claude -l
+```
+
+#### Launch a development squad
+
+```bash
+phantom squad my-team
+```
+
+Start multiple AI agents in a coordinated tmux session. Each agent can work in its own worktree on different aspects of your project simultaneously.
+
 
 ## 📚 Documentation
 
 - **[Getting Started](./docs/getting-started.md)** - Common workflows and tips
 - **[Commands Reference](./docs/commands.md)** - All commands and options
-- **[Configuration](./docs/configuration.md)** - Set up automatic file copying and post-create commands
+- **[Configuration](./docs/configuration.md)** - Configure worktrees, squad agents, and automation hooks
 - **[GitHub Integration](./docs/github.md)** - Work with GitHub pull requests and issues
 - **[MCP Integration](./docs/mcp.md)** - AI-powered parallel development with Model Context Protocol
 

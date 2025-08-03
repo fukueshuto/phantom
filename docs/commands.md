@@ -14,6 +14,11 @@ This document provides a comprehensive reference for all Phantom commands and th
   - [shell](#shell)
   - [exec](#exec)
   - [review](#review)
+- [Multi-agent Development](#multi-agent-development)
+  - [squad](#squad)
+  - [claude](#claude)
+- [Project Setup](#project-setup)
+  - [init](#init)
 - [GitHub Integration](#github-integration)
   - [github checkout](#github-checkout)
 - [Other Commands](#other-commands)
@@ -347,6 +352,181 @@ phantom gh checkout 123
 
 For detailed information, see the [GitHub Integration Guide](./github.md).
 
+## Multi-agent Development
+
+### squad
+
+Start and manage multi-agent development environments using tmux.
+
+```bash
+phantom squad <session-name> [options]
+```
+
+**Options:**
+- `-c, --config <file>` - Configuration file (default: phantom.config.json)
+- `-v, --verbose` - Enable verbose output
+
+**Examples:**
+```bash
+# Start a squad session
+phantom squad my-team
+
+# Start with custom config
+phantom squad my-team --config custom.config.json
+
+# Start with verbose output
+phantom squad my-team --verbose
+```
+
+**Requirements:**
+- `phantom.config.json` must exist with `squad` configuration
+- tmux must be installed
+- Each agent requires a prompt file (specified in config)
+
+**Configuration Example:**
+```json
+{
+  "squad": {
+    "agents": [
+      {
+        "name": "manager",
+        "prompt": ".claude/roles/manager.md",
+        "worktree": false
+      },
+      {
+        "name": "dev-agent",
+        "prompt": ".claude/roles/developer.md",
+        "worktree": true
+      }
+    ],
+    "layout": "auto"
+  }
+}
+```
+
+**Behavior:**
+- Creates a tmux session with the specified name
+- Sets up one pane per agent
+- Agents with `worktree: true` get their own worktree
+- Automatically arranges panes based on layout setting
+- Resumes existing session if already running
+
+**Notes:**
+- Use `tmux attach-session -t <session-name>` to attach to running squad
+- Each agent runs independently in its assigned pane
+- Session persists until explicitly terminated
+
+### claude
+
+Start or resume a Claude Code session with persistent context.
+
+```bash
+phantom claude [options]
+```
+
+**Options:**
+- `-s, --session-name <name>` - Custom session name (default: current directory name)
+- `-l, --list` - List all saved sessions
+- `-r, --remove <name>` - Remove a saved session
+- `-h, --help` - Show help message
+
+**Examples:**
+```bash
+# Start/resume session with auto-generated name
+phantom claude
+
+# Start/resume session with custom name
+phantom claude -s my-project
+
+# List all sessions
+phantom claude -l
+
+# Remove a session
+phantom claude -r old-project
+
+# Show help
+phantom claude -h
+```
+
+**Session Management:**
+- Sessions are automatically named based on current directory
+- Each session maintains independent context and history
+- Sessions persist between runs
+- Session files stored in `.sessions` directory
+
+**Notes:**
+- Requires Claude Code to be installed and accessible
+- Session names are sanitized (non-alphanumeric characters become hyphens)
+- Sessions can be resumed from any location
+- Automatically launches Claude Code with session context
+
+## Project Setup
+
+### init
+
+Initialize phantom configuration interactively.
+
+```bash
+phantom init [options]
+```
+
+**Options:**
+- `-f, --force` - Overwrite existing configuration without confirmation
+
+**Examples:**
+```bash
+# Interactive configuration setup
+phantom init
+
+# Force overwrite existing config
+phantom init --force
+```
+
+**Configuration Steps:**
+1. **Basic Settings**
+   - Worktrees directory location
+   - Default branch name
+   
+2. **Squad Configuration** (optional)
+   - Add agents with names and roles
+   - Configure worktree assignments
+   - Set tmux layout preferences
+   
+3. **Post-create Hooks** (optional)
+   - Files to copy to new worktrees
+   - Commands to run after creation
+   
+4. **Pre-delete Hooks** (optional)
+   - Cleanup commands before deletion
+
+**Generated Config Example:**
+```json
+{
+  "worktreesDirectory": "worktrees",
+  "defaultBranch": "main",
+  "squad": {
+    "agents": [
+      {
+        "name": "manager",
+        "prompt": ".claude/roles/manager.md",
+        "worktree": false
+      }
+    ],
+    "layout": "auto"
+  },
+  "postCreate": {
+    "copyFiles": [".env", ".env.local"],
+    "commands": ["npm install"]
+  }
+}
+```
+
+**Notes:**
+- Creates `phantom.config.json` in git root
+- Validates input during setup
+- Provides sensible defaults
+- Can be run multiple times to update configuration
+
 ## Other Commands
 
 ### version
@@ -399,5 +579,6 @@ Phantom uses the following exit codes:
 ## Related Documentation
 
 - [Getting Started](./getting-started.md) - Get started with Phantom quickly
-- [Configuration](./configuration.md) - Configure Phantom for your workflow
-- [Integrations](./integrations.md) - Integrate Phantom with other tools
+- [Configuration](./configuration.md) - Configure Phantom for your workflow, including squad setup
+- [GitHub Integration](./github.md) - Work with GitHub pull requests and issues
+- [MCP Integration](./mcp.md) - AI-powered parallel development with Model Context Protocol
