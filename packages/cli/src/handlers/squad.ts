@@ -1,18 +1,22 @@
 import { parseArgs } from "node:util";
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 import { exitCodes, exitWithError, exitWithSuccess } from "../errors.ts";
 import { output } from "../output.ts";
+import { 
+  createContext, 
+  AgentOrchestrator, 
+  type OrchestratorConfig 
+} from "@aku11i/phantom-core";
 
 export async function squadHandler(args: string[]): Promise<void> {
   const { values, positionals } = parseArgs({
     args,
     options: {
-      list: {
-        type: "boolean",
-        short: "l",
-      },
-      status: {
-        type: "boolean",
-        short: "s",
+      config: {
+        type: "string",
+        short: "c",
+        default: "phantom.config.json",
       },
       verbose: {
         type: "boolean",
@@ -24,86 +28,116 @@ export async function squadHandler(args: string[]): Promise<void> {
   });
 
   try {
-    if (values.list) {
-      output.log("Squad management: List feature");
-      output.log(
-        "This feature will list all active squad members and their roles.",
-      );
-      exitWithSuccess();
-      return;
-    }
-
-    if (values.status) {
-      output.log("Squad management: Status feature");
-      output.log("This feature will show the current status of the squad.");
-      exitWithSuccess();
-      return;
-    }
-
     if (positionals.length === 0) {
-      output.log("Squad management: Main interface");
-      output.log(
-        "Use --list to see squad members or --status to check squad status.",
-      );
+      output.log("Usage: phantom squad <session-name>");
+      output.log("");
+      output.log("Starts a multi-agent development environment using tmux.");
+      output.log("");
+      output.log("Options:");
+      output.log("  -c, --config <file>    Configuration file (default: phantom.config.json)");
+      output.log("  -v, --verbose          Enable verbose output");
       exitWithSuccess();
       return;
     }
 
-    const command = positionals[0];
-    const commandArgs = positionals.slice(1);
+    const sessionName = positionals[0];
+    const configPath = values.config;
 
-    switch (command) {
-      case "add":
-        if (commandArgs.length === 0) {
-          exitWithError(
-            "Please provide a member name to add to the squad",
-            exitCodes.validationError,
-          );
-        }
-        output.log(
-          `Squad management: Adding member '${commandArgs[0]}' to squad`,
-        );
-        output.log(
-          "This feature will add a new member to the squad with specified role.",
-        );
-        break;
+    // Check if config file exists
+    if (!existsSync(configPath)) {
+      exitWithError(
+        `Configuration file not found: ${configPath}`,
+        exitCodes.validationError,
+      );
+      return;
+    }
 
-      case "remove":
-        if (commandArgs.length === 0) {
-          exitWithError(
-            "Please provide a member name to remove from the squad",
-            exitCodes.validationError,
-          );
-        }
-        output.log(
-          `Squad management: Removing member '${commandArgs[0]}' from squad`,
-        );
-        output.log("This feature will remove a member from the squad.");
-        break;
+    // Load configuration
+    const contextResult = await createContext(process.cwd());
+    if (!contextResult.ok) {
+      exitWithError(
+        `Failed to load configuration: ${contextResult.error.message}`,
+        exitCodes.validationError,
+      );
+      return;
+    }
 
-      case "assign":
-        if (commandArgs.length < 2) {
-          exitWithError(
-            "Please provide member name and task for assignment",
-            exitCodes.validationError,
-          );
-        }
-        output.log(
-          `Squad management: Assigning task '${commandArgs[1]}' to '${commandArgs[0]}'`,
-        );
-        output.log("This feature will assign tasks to squad members.");
-        break;
+    const context = contextResult.value;
+    const squadConfig = context.config.squad;
 
-      default:
-        exitWithError(
-          `Unknown squad command: ${command}`,
-          exitCodes.validationError,
-        );
+    if (!squadConfig) {
+      exitWithError(
+        "No squad configuration found in phantom.config.json. Please add a 'squad' section to your configuration.",
+        exitCodes.validationError,
+      );
+      return;
     }
 
     if (values.verbose) {
-      output.log("Verbose mode enabled - showing detailed squad information");
+      output.log(`Starting squad session: ${sessionName}`);
+      output.log(`Configuration: ${configPath}`);
+      output.log(`Agents: ${squadConfig.agents.map(a => a.name).join(", ")}`);
+      output.log(`Layout: ${squadConfig.layout}`);
     }
+
+    // Create orchestrator configuration
+    const orchestratorConfig: OrchestratorConfig = {
+      gitRoot: context.gitRoot,
+      worktreeDirectory: context.worktreeDirectory,
+      sessionDirectory: join(context.gitRoot, ".claude_session"),
+      agentTimeout: 60000,
+    };
+
+    // Create and setup the orchestrator
+    const orchestrator = new AgentOrchestrator(orchestratorConfig, sessionName);
+    
+    output.log(`Setting up multi-agent environment: ${sessionName}`);
+    output.log(`Agents to start: ${squadConfig.agents.length}`);
+
+    const setupResult = await orchestrator.setupTeam(squadConfig, sessionName);
+    
+    if (!setupResult.ok) {
+      exitWithError(
+        `Failed to setup squad: ${setupResult.error.message}`,
+        exitCodes.generalError,
+      );
+      return;
+    }
+
+    const result = setupResult.value;
+
+    if (result.isResumed) {
+      output.log(`✅ Attached to existing session: ${sessionName}`);
+    } else {
+      output.log(`✅ Successfully created squad session: ${sessionName}`);
+      
+      if (result.createdWorktrees.length > 0) {
+        output.log(`📁 Created worktrees: ${result.createdWorktrees.length}`);
+        if (values.verbose) {
+          for (const worktree of result.createdWorktrees) {
+            output.log(`   - ${worktree}`);
+          }
+        }
+      }
+
+      output.log(`🔧 Created tmux panes: ${result.panes.length}`);
+      if (values.verbose) {
+        for (const pane of result.panes) {
+          output.log(`   - Pane ${pane.id}: ${pane.agentName}`);
+        }
+      }
+
+      output.log(`🤖 Started agents: ${result.agents.length}`);
+      if (values.verbose) {
+        for (const agent of result.agents) {
+          output.log(`   - ${agent.name} (status: ${agent.status}, pane: ${agent.paneId})`);
+        }
+      }
+    }
+
+    output.log("");
+    output.log("Your multi-agent development environment is ready!");
+    output.log(`Use 'tmux attach-session -t ${sessionName}' to attach to the session.`);
 
     exitWithSuccess();
   } catch (error) {

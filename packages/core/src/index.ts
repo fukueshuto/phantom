@@ -16,3 +16,6 @@ export * from "./worktree/pre-delete.ts";
 export * from "./exec.ts";
 export * from "./shell.ts";
 export * from "./claude/session.ts";
+export * from "./squad/tmuxManager.ts";
+export * from "./squad/orchestrator.ts";
+export * from "./squad/types.ts";

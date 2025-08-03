@@ -2,5 +2,20 @@
   "postCreate": {
     "copyFiles": [".claude/settings.local.json"],
     "commands": ["pnpm install"]
+  },
+  "squad": {
+    "agents": [
+      {
+        "name": "manager",
+        "prompt": "roles/manager.md",
+        "worktree": false
+      },
+      {
+        "name": "developer",
+        "prompt": "roles/developer.md",
+        "worktree": true
+      }
+    ],
+    "layout": "auto"
   }
 }
