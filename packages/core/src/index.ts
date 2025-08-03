@@ -15,3 +15,4 @@ export * from "./worktree/post-create.ts";
 export * from "./worktree/pre-delete.ts";
 export * from "./exec.ts";
 export * from "./shell.ts";
+export * from "./claude/session.ts";
