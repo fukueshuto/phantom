@@ -2,6 +2,29 @@ import { type Result, err, ok } from "@aku11i/phantom-shared";
 import { z } from "zod";
 import type { PhantomConfig } from "./loader.ts";
 
+// Squad-related schemas
+export const agentSchema = z.object({
+  name: z
+    .string()
+    .min(1)
+    .max(20)
+    .describe("エージェント名（Tmuxペインのタイトルにも使用）"),
+  prompt: z.string().describe("役割指示プロンプトファイルへの相対パス"),
+  worktree: z
+    .boolean()
+    .default(false)
+    .describe("独立したworktreeを作成するかどうか"),
+});
+
+export const squadConfigSchema = z.object({
+  agents: z.array(agentSchema).min(1),
+  layout: z.enum(["auto", "grid", "main-vertical"]).default("auto"),
+});
+
+// Export TypeScript types
+export type Agent = z.infer<typeof agentSchema>;
+export type SquadConfig = z.infer<typeof squadConfigSchema>;
+
 export class ConfigValidationError extends Error {
   constructor(message: string) {
     super(`Invalid phantom.config.json: ${message}`);
@@ -11,6 +34,7 @@ export class ConfigValidationError extends Error {
 
 export const phantomConfigSchema = z
   .object({
+    squad: squadConfigSchema.optional(),
     postCreate: z
       .object({
         copyFiles: z.array(z.string()).optional(),
