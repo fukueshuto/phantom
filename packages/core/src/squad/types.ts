@@ -69,3 +69,11 @@ export type {
   TmuxSetupError,
   AgentLaunchError,
 } from "./orchestrator.ts";
+
+// ツールから再エクスポート
+export type { 
+  SendMessageResult, 
+  ToolExecutionResult,
+  AgentToolError 
+} from "./tools.ts";
+export type { AgentToolFactory } from "./tools.ts";

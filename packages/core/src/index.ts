@@ -18,4 +18,5 @@ export * from "./shell.ts";
 export * from "./claude/session.ts";
 export * from "./squad/tmuxManager.ts";
 export * from "./squad/orchestrator.ts";
+export * from "./squad/tools.ts";
 export * from "./squad/types.ts";
