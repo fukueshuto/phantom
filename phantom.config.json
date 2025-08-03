@@ -11,7 +11,7 @@
         "worktree": false
       },
       {
-        "name": "developer",
+        "name": "dev-agent",
         "prompt": "roles/developer.md",
         "worktree": true
       }

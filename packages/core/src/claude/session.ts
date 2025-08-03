@@ -137,8 +137,8 @@ export class ClaudeSessionManager {
     agentName?: string,
   ): Promise<Result<{ sessionId: string }, ClaudeSessionError>> {
     return new Promise((resolve) => {
-      const args = agentName ? ["--agent", agentName] : [];
-      const claudeProcess = spawn("claude", ["code", ...args], {
+      // Note: Removing --agent option as it's not supported in current claude code version
+      const claudeProcess = spawn("claude", ["code"], {
         stdio: ["pipe", "pipe", "pipe"],
       });
 
@@ -227,8 +227,8 @@ export class ClaudeSessionManager {
    * Public version for testing purposes.
    */
   buildCommandString(sessionId: string, agentName?: string): string {
-    const baseCommand = `claude code --session ${sessionId}`;
-    return agentName ? `${baseCommand} --agent ${agentName}` : baseCommand;
+    // Note: Removing --agent option as it's not supported in current claude code version
+    return `claude code --session ${sessionId}`;
   }
 
   /**

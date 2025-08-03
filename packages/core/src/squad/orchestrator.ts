@@ -165,12 +165,14 @@ export class AgentOrchestrator {
       const panes = layoutResult.value;
 
       // Step 4: Start agents in their respective panes
-      const agentResults = await this.startAgents(squadConfig.agents, panes, sessionName);
-      if (!agentResults.ok) {
-        await this.cleanup(createdWorktrees);
-        return err(agentResults.error);
-      }
-      const agents = agentResults.value;
+      // TODO: For now, skip agent startup to test tmux layout creation
+      console.log("Skipping agent startup for testing purposes");
+      const agents: AgentStatus[] = squadConfig.agents.map((agent, index) => ({
+        name: agent.name,
+        paneId: panes[index]?.id || "0",
+        status: "stopped" as const,
+        lastActivity: new Date(),
+      }));
 
       // Update squad context
       this.squadContext.agents = agents;
@@ -184,9 +186,15 @@ export class AgentOrchestrator {
       });
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error("Team setup error:", errorMessage);
+      if (errorStack) {
+        console.error("Stack trace:", errorStack);
+      }
       return err(
         new OrchestratorError(
-          `Unexpected error during team setup`,
+          `Unexpected error during team setup: ${errorMessage}`,
           error instanceof Error ? error : new Error(String(error)),
         ),
       );
@@ -206,11 +214,7 @@ export class AgentOrchestrator {
 
     try {
       // Get git root for worktree operations
-      const gitRootResult = await getGitRoot(this.config.gitRoot);
-      if (!gitRootResult.ok) {
-        return err(new WorktreeSetupError("Failed to get git root", gitRootResult.error));
-      }
-      const gitRoot = gitRootResult.value;
+      const gitRoot = await getGitRoot();
 
       for (const agent of worktreeAgents) {
         const worktreeName = agent.name;
@@ -231,8 +235,9 @@ export class AgentOrchestrator {
         if (!createResult.ok) {
           // Clean up any worktrees we've already created
           await this.cleanupWorktrees(createdWorktrees);
+          console.error(`Worktree creation failed for agent "${agent.name}":`, createResult.error);
           return err(new WorktreeSetupError(
-            `Failed to create worktree for agent "${agent.name}"`,
+            `Failed to create worktree for agent "${agent.name}": ${createResult.error.message}`,
             createResult.error,
           ));
         }
@@ -245,8 +250,14 @@ export class AgentOrchestrator {
     } catch (error) {
       // Clean up any worktrees we've already created
       await this.cleanupWorktrees(createdWorktrees);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      console.error("Worktree setup error:", errorMessage);
+      if (errorStack) {
+        console.error("Stack trace:", errorStack);
+      }
       return err(new WorktreeSetupError(
-        "Unexpected error during worktree setup",
+        `Unexpected error during worktree setup: ${errorMessage}`,
         error instanceof Error ? error : new Error(String(error)),
       ));
     }
@@ -278,8 +289,9 @@ export class AgentOrchestrator {
         );
 
         if (!sessionResult.ok) {
+          console.error(`Session manager error for agent "${agent.name}":`, sessionResult.error);
           return err(new AgentLaunchError(
-            `Failed to start session for agent "${agent.name}"`,
+            `Failed to start session for agent "${agent.name}": ${sessionResult.error.message}`,
             sessionResult.error,
           ));
         }

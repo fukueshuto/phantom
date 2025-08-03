@@ -5,6 +5,7 @@ import {
   type TmuxSplitDirection,
   executeTmuxCommand,
   isInsideTmux,
+  spawnProcess,
 } from "@aku11i/phantom-process";
 import type { ProcessError } from "@aku11i/phantom-process";
 import type { Agent, SquadConfig } from "../config/validate.ts";
@@ -58,14 +59,14 @@ export class TmuxManager {
       return err(new TmuxSessionError("No agents specified in configuration"));
     }
 
-    // 最初のエージェント用に新しいウィンドウを作成
-    const firstAgent = agents[0];
-    const firstWindowResult = await this.createNewWindow(firstAgent.name);
-    if (!firstWindowResult.ok) {
-      return err(firstWindowResult.error);
+    // まず新しいセッションを作成
+    const createSessionResult = await this.createNewSession();
+    if (!createSessionResult.ok) {
+      return err(createSessionResult.error);
     }
 
     const panes: PaneInfo[] = [];
+    const firstAgent = agents[0];
     const firstPane: PaneInfo = {
       id: "0", // 最初のペインはID 0
       agentName: firstAgent.name,
@@ -100,6 +101,16 @@ export class TmuxManager {
   }
 
   /**
+   * 新しいTmuxセッションを作成
+   */
+  private async createNewSession(): Promise<Result<TmuxSuccess, ProcessError>> {
+    return await spawnProcess({
+      command: "tmux",
+      args: ["new-session", "-d", "-s", this.sessionName, "bash"],
+    });
+  }
+
+  /**
    * 新しいTmuxウィンドウを作成
    */
   private async createNewWindow(agentName: string): Promise<Result<TmuxSuccess, ProcessError>> {
@@ -123,12 +134,24 @@ export class TmuxManager {
   ): Promise<Result<PaneInfo, ProcessError>> {
     const direction = this.getSplitDirection(layout, index, totalAgents);
     
-    const options: TmuxOptions = {
-      direction,
-      command: "bash",
-    };
+    let tmuxArgs: string[];
+    
+    switch (direction) {
+      case "vertical":
+        tmuxArgs = ["split-window", "-v", "-t", this.sessionName, "bash"];
+        break;
+      case "horizontal":
+        tmuxArgs = ["split-window", "-h", "-t", this.sessionName, "bash"];
+        break;
+      default:
+        tmuxArgs = ["split-window", "-v", "-t", this.sessionName, "bash"];
+    }
 
-    const result = await executeTmuxCommand(options);
+    const result = await spawnProcess({
+      command: "tmux",
+      args: tmuxArgs,
+    });
+
     if (!result.ok) {
       return err(result.error);
     }
@@ -197,13 +220,10 @@ export class TmuxManager {
     }
 
     // tmux select-layout コマンドを実行
-    const options: TmuxOptions = {
-      direction: "new", // この場合は実際には使われない
+    return await spawnProcess({
       command: "tmux",
-      args: ["select-layout", tmuxLayout],
-    };
-
-    return await executeTmuxCommand(options);
+      args: ["select-layout", "-t", this.sessionName, tmuxLayout],
+    });
   }
 
   /**
@@ -216,13 +236,10 @@ export class TmuxManager {
       return err(new TmuxSessionError(`Pane with ID ${paneId} not found`));
     }
 
-    const options: TmuxOptions = {
-      direction: "new", // この場合は実際には使われない
+    return await spawnProcess({
       command: "tmux",
-      args: ["send-keys", "-t", paneId, keys, "Enter"],
-    };
-
-    return await executeTmuxCommand(options);
+      args: ["send-keys", "-t", `${this.sessionName}:${paneId}`, keys, "Enter"],
+    });
   }
 
   /**
@@ -250,13 +267,10 @@ export class TmuxManager {
    * 既存セッションにアタッチ可能かチェック
    */
   async checkExistingSession(): Promise<Result<boolean, ProcessError>> {
-    const options: TmuxOptions = {
-      direction: "new", // この場合は実際には使われない
+    const result = await spawnProcess({
       command: "tmux",
       args: ["has-session", "-t", this.sessionName],
-    };
-
-    const result = await executeTmuxCommand(options);
+    });
     
     // has-sessionは存在する場合exit code 0、存在しない場合非0を返す
     return ok(result.ok);
@@ -266,26 +280,20 @@ export class TmuxManager {
    * 既存セッションにアタッチ
    */
   async attachToSession(): Promise<Result<TmuxSuccess, ProcessError>> {
-    const options: TmuxOptions = {
-      direction: "new", // この場合は実際には使われない
+    return await spawnProcess({
       command: "tmux",
       args: ["attach-session", "-t", this.sessionName],
-    };
-
-    return await executeTmuxCommand(options);
+    });
   }
 
   /**
    * セッションを終了
    */
   async killSession(): Promise<Result<TmuxSuccess, ProcessError>> {
-    const options: TmuxOptions = {
-      direction: "new", // この場合は実際には使われない
+    const result = await spawnProcess({
       command: "tmux",
       args: ["kill-session", "-t", this.sessionName],
-    };
-
-    const result = await executeTmuxCommand(options);
+    });
     
     // セッション終了後はペインマッピングをクリア
     if (result.ok) {

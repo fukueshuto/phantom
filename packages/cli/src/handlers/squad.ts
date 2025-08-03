@@ -53,16 +53,16 @@ export async function squadHandler(args: string[]): Promise<void> {
     }
 
     // Load configuration
-    const contextResult = await createContext(process.cwd());
-    if (!contextResult.ok) {
+    const context = await createContext(process.cwd());
+    
+    if (!context.config) {
       exitWithError(
-        `Failed to load configuration: ${contextResult.error.message}`,
+        `Configuration file not found or invalid: ${configPath}`,
         exitCodes.validationError,
       );
       return;
     }
 
-    const context = contextResult.value;
     const squadConfig = context.config.squad;
 
     if (!squadConfig) {
@@ -83,7 +83,7 @@ export async function squadHandler(args: string[]): Promise<void> {
     // Create orchestrator configuration
     const orchestratorConfig: OrchestratorConfig = {
       gitRoot: context.gitRoot,
-      worktreeDirectory: context.worktreeDirectory,
+      worktreeDirectory: context.worktreesDirectory,
       sessionDirectory: join(context.gitRoot, ".claude_session"),
       agentTimeout: 60000,
     };
