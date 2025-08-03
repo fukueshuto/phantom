@@ -1,0 +1,22 @@
+{
+  "squad": {
+    "agents": [
+      {
+        "name": "manager",
+        "prompt": "roles/manager.md",
+        "worktree": false
+      },
+      {
+        "name": "dev-1",
+        "prompt": "roles/developer.md",
+        "worktree": true
+      },
+      {
+        "name": "dev-auto",
+        "prompt": "roles/autonomous.md",
+        "worktree": true
+      }
+    ],
+    "layout": "auto"
+  }
+}
